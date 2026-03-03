@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VHI 雲端文件庫 v7.3</title>
+    <title>VHI 跨裝置同步文件庫</title>
     <style>
-        :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; --google: #ef4444; }
+        :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         .panel { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
-        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; letter-spacing: 1px; }
+        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; }
         label { display: block; font-size: 13px; color: #64748b; margin-top: 10px; font-weight: bold; }
         input, select { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-add { width: 100%; padding: 14px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 10px; }
-        .btn-history { background: var(--google); color: white; width: 100%; text-align: center; display: block; line-height: 48px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .btn-add { width: 100%; padding: 14px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .btn-add:disabled { background: #94a3b8; cursor: not-allowed; }
         .status-msg { background: var(--success); color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; }
         .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; }
         .filter-btn { white-space: nowrap; padding: 6px 16px; background: #e2e8f0; border-radius: 20px; cursor: pointer; font-size: 13px; color: #475569; }
@@ -21,87 +21,94 @@
         .bookmark-card { background: var(--card); margin-bottom: 12px; padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .info a { text-decoration: none; color: var(--primary); font-weight: 600; display: block; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .info p { margin: 0; font-size: 11px; color: #94a3b8; word-break: break-all; }
-        .loading { text-align: center; color: #64748b; padding: 40px; font-style: italic; font-size: 14px; }
+        .loading { text-align: center; color: #64748b; padding: 40px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🚀 VHI 雲端同步書籤 (v7.3)</h2>
-    <div id="status" class="status-msg">✅ 資料已同步至雲端</div>
+    <h2>🚀 VHI 一站式同步文件庫</h2>
+    <div id="status" class="status-msg">✅ 紀錄已同步至雲端</div>
 
     <div class="panel">
         <form id="bmForm" target="hidden_iframe" onsubmit="handleFormSubmit()">
-            <label>文件標題</label>
-            <input type="text" id="siteName" name="entry.5718413" placeholder="標題內容" required>
-            <label>文件網址</label>
-            <input type="url" id="siteUrl" name="entry.1948870300" placeholder="https://..." required>
-            <label>分類標籤</label>
+            <label>1. 貼上網址 (貼上後自動抓取名稱)</label>
+            <input type="url" id="siteUrl" name="entry.1948870300" placeholder="https://..." required onpaste="autoFetchTitle(this.value)" oninput="autoFetchTitle(this.value)">
+            
+            <label>2. 文件名稱</label>
+            <input type="text" id="siteName" name="entry.5718413" placeholder="等待抓取或手動輸入..." required>
+            
+            <label>3. 分類標籤</label>
             <select id="categorySelect" name="entry.696853553">
                 <option value="Virtuozzo">Virtuozzo</option>
                 <option value="Linux">Linux</option>
                 <option value="Network">Network</option>
                 <option value="VHI-Storage">VHI-Storage</option>
             </select>
-            <button type="submit" class="btn-add">同步並儲存</button>
+            <button type="submit" id="submitBtn" class="btn-add">儲存並同步至雲端</button>
         </form>
-        <a id="historyLink" href="https://docs.google.com/spreadsheets/d/1vS2VsK3B16fJ9kxgsuJCBKZun_iwgsReUTw3sjwa517AlbXaDELiACwdWNIWqTKra9cHciMP_moeNdM/edit" target="_blank" class="btn-history">📊 開啟 Google 試算表 (查看全部)</a>
     </div>
 
     <div id="filterBar" class="filter-bar"></div>
-    <div id="list"><div class="loading">正在同步雲端資料...</div></div>
+    <div id="list"><div class="loading">正在讀取同步紀錄...</div></div>
 </div>
 
 <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
 <script>
-    // --- 🛠️ 核心 ID 修復 ---
-    // 試算表 ID
+    // --- 🛠️ 核心 ID 設定 ---
     const SHEET_ID = "1vS2VsK3B16fJ9kxgsuJCBKZun_iwgsReUTw3sjwa517AlbXaDELiACwdWNIWqTKra9cHciMP_moeNdM";
-    // 獲取 CSV 的路徑 (必須是 CSV 格式才能被 fetch)
     const PUB_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
-    // 表單發送路徑
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSfV1LZEv68bCdzEHVV1_OYInXG2HCKKVIpr_nkxYRHWlPsytQ/formResponse";
 
     let bookmarks = [];
     let currentFilter = '全部';
 
+    // 自動抓取名稱功能
+    async function autoFetchTitle(url) {
+        if (!url.startsWith('http')) return;
+        const nameInput = document.getElementById('siteName');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        nameInput.placeholder = "正在分析網頁標題...";
+        submitBtn.disabled = true;
+
+        try {
+            // 使用公開解析服務
+            const fetchUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const response = await fetch(fetchUrl);
+            const data = await response.json();
+            const html = data.contents;
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const title = doc.querySelector('title')?.innerText || "未知名網頁";
+            
+            nameInput.value = title.trim();
+        } catch (e) {
+            nameInput.placeholder = "抓取失敗，請手動輸入名稱";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
     async function init() {
         document.getElementById('bmForm').action = FORM_ACTION;
-        
-        const params = new URLSearchParams(window.location.search);
-        if (params.has('name')) document.getElementById('siteName').value = decodeURIComponent(params.get('name'));
-        if (params.has('url')) document.getElementById('siteUrl').value = decodeURIComponent(params.get('url'));
-
         await fetchCloudData();
     }
 
     async function fetchCloudData() {
         try {
-            // 注意：如果顯示讀取失敗，請確認該試算表已開啟「檔案 > 共用 > 發布到網路」
             const response = await fetch(PUB_CSV_URL);
-            if (!response.ok) throw new Error("Network response was not ok");
             const data = await response.text();
-            
-            const rows = data.split('\n').filter(row => row.trim() !== '');
-            const contentRows = rows.slice(1); 
-            
-            bookmarks = contentRows.map(row => {
-                // 更強健的 CSV 分隔解析
+            const rows = data.split('\n').filter(row => row.trim() !== '').slice(1);
+            bookmarks = rows.map(row => {
                 const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
                 const cleanCols = cols.map(c => c.replace(/^"|"$/g, ''));
-                return {
-                    time: cleanCols[0],
-                    name: cleanCols[1],
-                    url: cleanCols[2],
-                    cat: cleanCols[3]
-                };
-            }).filter(b => b.name && b.url);
-
+                return { name: cleanCols[1], url: cleanCols[2], cat: cleanCols[3] };
+            }).filter(b => b.name);
             renderFilterBar();
             renderBookmarks();
         } catch (e) {
-            document.getElementById('list').innerHTML = `<div class="loading" style="color:#ef4444;">讀取失敗：請確保試算表已執行「發布到網路」。</div>`;
+            document.getElementById('list').innerHTML = '<div class="loading">請確保試算表已「發布到網路」。</div>';
         }
     }
 
@@ -111,43 +118,29 @@
             document.getElementById('status').style.display = 'none';
             document.getElementById('siteName').value = '';
             document.getElementById('siteUrl').value = '';
-            if(window.location.search) window.history.replaceState({}, '', window.location.pathname);
             setTimeout(fetchCloudData, 3000);
         }, 1500);
     }
 
     function renderFilterBar() {
         const uniqueCats = ['全部', ...new Set(bookmarks.map(b => b.cat))];
-        document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `
-            <div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>
-        `).join('');
+        document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `<div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`).join('');
     }
 
-    function setFilter(cat) {
-        currentFilter = cat;
-        renderFilterBar();
-        renderBookmarks();
-    }
+    function setFilter(cat) { currentFilter = cat; renderFilterBar(); renderBookmarks(); }
 
     function renderBookmarks() {
         const container = document.getElementById('list');
         const data = currentFilter === '全部' ? bookmarks : bookmarks.filter(b => b.cat === currentFilter);
-        
-        if (data.length === 0) {
-            container.innerHTML = '<div class="loading">雲端目前尚無紀錄。</div>';
-            return;
-        }
-
         container.innerHTML = data.slice().reverse().map(b => `
             <div class="bookmark-card">
                 <div class="info">
                     <a href="${b.url}" target="_blank">${b.name}</a>
                     <p>${b.url}</p>
-                    <div style="font-size:10px; color:#64748b; margin-top:5px;">📁 分類：${b.cat}</div>
+                    <div style="font-size:10px; color:#64748b; margin-top:5px;">📁 ${b.cat}</div>
                 </div>
             </div>`).join('');
     }
-
     init();
 </script>
 </body>
