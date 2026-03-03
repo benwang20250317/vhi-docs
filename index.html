@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VHI 雲端文件庫 v7.2</title>
+    <title>VHI 雲端文件庫 v7.3</title>
     <style>
         :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; --google: #ef4444; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
@@ -27,7 +27,7 @@
 <body>
 
 <div class="container">
-    <h2>🚀 VHI 雲端同步書籤 (v7.2)</h2>
+    <h2>🚀 VHI 雲端同步書籤 (v7.3)</h2>
     <div id="status" class="status-msg">✅ 資料已同步至雲端</div>
 
     <div class="panel">
@@ -55,8 +55,12 @@
 <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
 <script>
-    // --- 🛠️ 最終配置區 ---
-    const PUB_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2VsK3B16fJ9kxgsuJCBKZun_iwgsReUTw3sjwa517AlbXaDELiACwdWNIWqTKra9cHciMP_moeNdM/pub?output=csv";
+    // --- 🛠️ 核心 ID 修復 ---
+    // 試算表 ID
+    const SHEET_ID = "1vS2VsK3B16fJ9kxgsuJCBKZun_iwgsReUTw3sjwa517AlbXaDELiACwdWNIWqTKra9cHciMP_moeNdM";
+    // 獲取 CSV 的路徑 (必須是 CSV 格式才能被 fetch)
+    const PUB_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+    // 表單發送路徑
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSfV1LZEv68bCdzEHVV1_OYInXG2HCKKVIpr_nkxYRHWlPsytQ/formResponse";
 
     let bookmarks = [];
@@ -74,15 +78,16 @@
 
     async function fetchCloudData() {
         try {
+            // 注意：如果顯示讀取失敗，請確認該試算表已開啟「檔案 > 共用 > 發布到網路」
             const response = await fetch(PUB_CSV_URL);
+            if (!response.ok) throw new Error("Network response was not ok");
             const data = await response.text();
             
-            // 簡易 CSV 解析邏輯
             const rows = data.split('\n').filter(row => row.trim() !== '');
-            const contentRows = rows.slice(1); // 移除標題列
+            const contentRows = rows.slice(1); 
             
             bookmarks = contentRows.map(row => {
-                // 處理可能包含逗號的引號字串
+                // 更強健的 CSV 分隔解析
                 const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
                 const cleanCols = cols.map(c => c.replace(/^"|"$/g, ''));
                 return {
@@ -95,4 +100,55 @@
 
             renderFilterBar();
             renderBookmarks();
-        } catch (e
+        } catch (e) {
+            document.getElementById('list').innerHTML = `<div class="loading" style="color:#ef4444;">讀取失敗：請確保試算表已執行「發布到網路」。</div>`;
+        }
+    }
+
+    function handleFormSubmit() {
+        document.getElementById('status').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('siteName').value = '';
+            document.getElementById('siteUrl').value = '';
+            if(window.location.search) window.history.replaceState({}, '', window.location.pathname);
+            setTimeout(fetchCloudData, 3000);
+        }, 1500);
+    }
+
+    function renderFilterBar() {
+        const uniqueCats = ['全部', ...new Set(bookmarks.map(b => b.cat))];
+        document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `
+            <div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>
+        `).join('');
+    }
+
+    function setFilter(cat) {
+        currentFilter = cat;
+        renderFilterBar();
+        renderBookmarks();
+    }
+
+    function renderBookmarks() {
+        const container = document.getElementById('list');
+        const data = currentFilter === '全部' ? bookmarks : bookmarks.filter(b => b.cat === currentFilter);
+        
+        if (data.length === 0) {
+            container.innerHTML = '<div class="loading">雲端目前尚無紀錄。</div>';
+            return;
+        }
+
+        container.innerHTML = data.slice().reverse().map(b => `
+            <div class="bookmark-card">
+                <div class="info">
+                    <a href="${b.url}" target="_blank">${b.name}</a>
+                    <p>${b.url}</p>
+                    <div style="font-size:10px; color:#64748b; margin-top:5px;">📁 分類：${b.cat}</div>
+                </div>
+            </div>`).join('');
+    }
+
+    init();
+</script>
+</body>
+</html>
