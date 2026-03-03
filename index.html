@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtuozzo 技術文件管理</title>
+    <style>
+        :root { --primary: #0284c7; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --success: #059669; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .panel { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; border-bottom: 2px solid #e0f2fe; padding-bottom: 10px; }
+        label { display: block; font-size: 13px; color: #64748b; margin-top: 10px; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 16px; background: #fff; }
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-cat { background: #94a3b8; color: white; }
+        button:active { transform: scale(0.97); opacity: 0.9; }
+        .status-msg { background: var(--success); color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; animation: slideIn 0.3s; }
+        .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; }
+        .filter-btn { white-space: nowrap; padding: 6px 14px; background: #e2e8f0; border-radius: 20px; cursor: pointer; font-size: 13px; color: #475569; }
+        .filter-btn.active { background: var(--primary); color: white; }
+        .bookmark-card { background: var(--card); margin-bottom: 10px; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid var(--primary); }
+        .info { flex: 1; min-width: 0; }
+        .info a { text-decoration: none; color: var(--primary); font-weight: 600; font-size: 1rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info p { margin: 3px 0; font-size: 11px; color: #94a3b8; word-break: break-all; }
+        .tag { font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #475569; }
+        .del-btn { color: #cbd5e1; cursor: pointer; padding: 5px; font-size: 1.2rem; }
+        .del-btn:hover { color: #ef4444; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🛠️ VHI 7.2 文件庫</h2>
+    <div id="status" class="status-msg">✅ 已同步至 Google 試算表</div>
+
+    <div class="panel">
+        <form id="bmForm" target="hidden_iframe" onsubmit="handleFormSubmit()">
+            <label>文件標題</label>
+            <input type="text" id="siteName" name="entry.147247724" placeholder="例如：VHI 7.2 Storage Guide" required>
+            <label>文件網址</label>
+            <input type="url" id="siteUrl" name="entry.1785939056" placeholder="https://..." required>
+            <label>分類標籤</label>
+            <select id="categorySelect" name="entry.939546368"></select>
+            <div class="btn-row">
+                <button type="submit" class="btn-add">同步並儲存</button>
+                <button type="button" class="btn-cat" onclick="manageCategories()">管理分類</button>
+            </div>
+        </form>
+    </div>
+    <div id="filterBar" class="filter-bar"></div>
+    <div id="list"></div>
+</div>
+
+<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+
+<script>
+    const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSdtJIHbL78eG5CicdS55bOkCEQSDsoeKwC1AjHTrONfPpK9QQ/formResponse";
+    // 預設 VHI 相關分類
+    let categories = JSON.parse(localStorage.getItem('vhi_cats')) || ['VHI-Storage', 'VHI-Network', 'VHI-Compute', 'VHI-Installation', 'VHI-CLI'];
+    let bookmarks = JSON.parse(localStorage.getItem('vhi_items')) || [];
+    let currentFilter = '全部';
+
+    function init() {
+        document.getElementById('bmForm').action = FORM_ACTION;
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('name')) document.getElementById('siteName').value = decodeURIComponent(params.get('name'));
+        if (params.has('url')) {
+            document.getElementById('siteUrl').value = decodeURIComponent(params.get('url'));
+            document.getElementById('categorySelect').focus();
+        }
+        renderCategories(); renderFilterBar(); renderBookmarks();
+    }
+
+    function handleFormSubmit() {
+        const name = document.getElementById('siteName').value;
+        const url = document.getElementById('siteUrl').value;
+        const cat = document.getElementById('categorySelect').value;
+        document.getElementById('status').style.display = 'block';
+        bookmarks.push({ name, url, cat });
+        localStorage.setItem('vhi_items', JSON.stringify(bookmarks));
+        setTimeout(() => {
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('siteName').value = '';
+            document.getElementById('siteUrl').value = '';
+            if(window.location.search) window.history.replaceState({}, '', window.location.pathname);
+            renderBookmarks();
+        }, 1500);
+    }
+
+    function renderCategories() { document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join(''); }
+    function renderFilterBar() { 
+        const allCats = ['全部', ...categories];
+        document.getElementById('filterBar').innerHTML = allCats.map(c => `<div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`).join('');
+    }
+    function setFilter(cat) { currentFilter = cat; renderFilterBar(); renderBookmarks(); }
+    function renderBookmarks() {
+        const filtered = currentFilter === '全部' ? bookmarks : bookmarks.filter(b => b.cat === currentFilter);
+        document.getElementById('list').innerHTML = filtered.slice().reverse().map((b) => `
+            <div class="bookmark-card">
+                <div class="info">
+                    <a href="${b.url}" target="_blank">${b.name}</a>
+                    <p>${b.url}</p>
+                    <span class="tag">#${b.cat}</span>
+                </div>
+                <div class="del-btn" onclick="deleteBookmark(${bookmarks.indexOf(b)})">🗑️</div>
+            </div>`).join('');
+    }
+    function deleteBookmark(i) { if(confirm('從本地清單移除？')) { bookmarks.splice(i, 1); localStorage.setItem('vhi_items', JSON.stringify(bookmarks)); renderBookmarks(); } }
+    function manageCategories() {
+        const n = prompt("輸入新分類(例如: FortiGate):");
+        if(n && !categories.includes(n)) { categories.push(n); localStorage.setItem('vhi_cats', JSON.stringify(categories)); renderCategories(); renderFilterBar(); }
+    }
+    init();
+</script>
+</body>
+</html>
