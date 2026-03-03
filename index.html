@@ -3,88 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VHI 雲端同步文件庫 v5.2</title>
+    <title>VHI 雲端文件庫 (v6.0 修復版)</title>
     <style>
-        :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; --google: #ea4335; }
+        :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; --google: #ef4444; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         .panel { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
-        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; padding-bottom: 5px; }
-        .update-tag { text-align: center; font-size: 11px; color: #94a3b8; margin-bottom: 15px; }
+        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; }
         label { display: block; font-size: 13px; color: #64748b; margin-top: 10px; font-weight: bold; }
         input, select { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        button { flex: 1; min-width: 120px; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        .btn-add { background: var(--primary); color: white; }
-        .btn-cat { background: #94a3b8; color: white; }
-        .btn-history { background: var(--google); color: white; width: 100%; margin-top: 10px; text-decoration: none; text-align: center; display: block; line-height: 44px; border-radius: 8px; font-weight: bold; font-size: 14px; }
-        button:active, .btn-history:active { transform: scale(0.97); opacity: 0.9; }
+        .btn-add { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 10px; }
+        .btn-history { background: var(--google); color: white; width: 100%; text-decoration: none; text-align: center; display: block; line-height: 44px; border-radius: 8px; font-weight: bold; font-size: 14px; }
         .status-msg { background: var(--success); color: white; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; }
         .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; }
         .filter-btn { white-space: nowrap; padding: 6px 14px; background: #e2e8f0; border-radius: 20px; cursor: pointer; font-size: 13px; }
         .filter-btn.active { background: var(--primary); color: white; }
-        .bookmark-card { background: var(--card); margin-bottom: 10px; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .bookmark-card { background: var(--card); margin-bottom: 10px; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .info a { text-decoration: none; color: var(--primary); font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .info p { margin: 3px 0; font-size: 11px; color: #94a3b8; word-break: break-all; }
-        .tag { font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #475569; margin-top: 5px; display: inline-block; }
-        .loading { text-align: center; color: #64748b; padding: 20px; font-style: italic; }
+        .loading { text-align: center; color: #64748b; padding: 20px; font-style: italic; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🛠️ VHI 雲端文件庫 (自動同步版)</h2>
-    <div class="update-tag">版本：v5.2 (最新更新：2026/03/03 11:20)</div>
-    
+    <h2>🛠️ VHI 雲端文件庫 (v6.0)</h2>
     <div id="status" class="status-msg">✅ 資料已同步至 Google 試算表</div>
 
     <div class="panel">
         <form id="bmForm" target="hidden_iframe" onsubmit="handleFormSubmit()">
             <label>文件標題</label>
-            <input type="text" id="siteName" name="entry.147247724" placeholder="自動抓取中..." required>
+            <input type="text" id="siteName" name="entry.147247724" placeholder="標題內容" required>
             <label>文件網址</label>
             <input type="url" id="siteUrl" name="entry.1785939056" placeholder="https://..." required>
             <label>分類標籤</label>
-            <select id="categorySelect" name="entry.939546368"></select>
-            
-            <div class="btn-row">
-                <button type="submit" class="btn-add">同步並儲存</button>
-                <button type="button" class="btn-cat" onclick="manageCategories()">管理分類</button>
-            </div>
+            <select id="categorySelect" name="entry.939546368">
+                <option value="Virtuozzo">Virtuozzo</option>
+                <option value="Linux">Linux</option>
+                <option value="Network">Network</option>
+                <option value="VHI-Storage">VHI-Storage</option>
+            </select>
+            <button type="submit" class="btn-add">同步並儲存</button>
         </form>
-        
-        <a id="historyLink" href="https://docs.google.com/spreadsheets/d/1kqNSUPCtz-rH4v1ZnbO1LTBmSltm6x1vy5lzy6u7UXo/edit" target="_blank" class="btn-history">📊 查看 Google 試算表原始紀錄 (跨帳號)</a>
+        <a id="historyLink" href="#" target="_blank" class="btn-history">📊 查看 Google 試算表原始紀錄 (跨帳號)</a>
     </div>
 
     <div id="filterBar" class="filter-bar"></div>
-    <div id="list"><div class="loading">正在從雲端讀取最新歷史紀錄...</div></div>
+    <div id="list"><div class="loading">正在嘗試從雲端讀取歷史紀錄...</div></div>
 </div>
 
 <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
 <script>
+    // --- 關鍵 ID 修正區 ---
     const SHEET_ID = '1kqNSUPCtz-rH4v1ZnbO1LTBmSltm6x1vy5lzy6u7UXo'; 
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSdtJIHbL78eG5CicdS55bOkCEQSDsoeKwC1AjHTrONfPpK9QQ/formResponse";
 
-    let categories = JSON.parse(localStorage.getItem('vhi_cats')) || ['VHI-Storage', 'VHI-Network', 'VHI-Compute', 'VHI-CLI'];
     let bookmarks = [];
     let currentFilter = '全部';
 
     async function init() {
         document.getElementById('bmForm').action = FORM_ACTION;
+        document.getElementById('historyLink').href = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+        
         const params = new URLSearchParams(window.location.search);
         if (params.has('name')) document.getElementById('siteName').value = decodeURIComponent(params.get('name'));
         if (params.has('url')) document.getElementById('siteUrl').value = decodeURIComponent(params.get('url'));
-        renderCategories();
+
         await fetchCloudData();
     }
 
     async function fetchCloudData() {
-        // 強制加入時間戳記防止瀏覽器快取舊資料
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&t=${new Date().getTime()}`;
+        // 使用 gviz API 讀取資料
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
         try {
             const response = await fetch(url);
-            if (!response.ok) throw new Error('無法讀取試算表');
+            if (!response.ok) throw new Error();
             const data = await response.text();
             
             const rows = data.split('\n').slice(1); 
@@ -96,7 +90,7 @@
             renderFilterBar();
             renderBookmarks();
         } catch (e) {
-            document.getElementById('list').innerHTML = '<div class="loading">讀取失敗：請確保試算表已執行「發布到網路」。</div>';
+            document.getElementById('list').innerHTML = `<div class="loading" style="color:#ef4444;">讀取失敗：請確保試算表已執行「發布到網路」。</div>`;
         }
     }
 
@@ -107,34 +101,41 @@
             document.getElementById('siteName').value = '';
             document.getElementById('siteUrl').value = '';
             if(window.location.search) window.history.replaceState({}, '', window.location.pathname);
-            // 提交後等待 Google 試算表寫入，3秒後自動刷新清單
             setTimeout(fetchCloudData, 3000);
         }, 1500);
     }
 
-    function renderCategories() { document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join(''); }
     function renderFilterBar() {
         const uniqueCats = ['全部', ...new Set(bookmarks.map(b => b.cat))];
-        document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `<div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`).join('');
+        document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `
+            <div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>
+        `).join('');
     }
-    function setFilter(cat) { currentFilter = cat; renderFilterBar(); renderBookmarks(); }
+
+    function setFilter(cat) {
+        currentFilter = cat;
+        renderFilterBar();
+        renderBookmarks();
+    }
+
     function renderBookmarks() {
         const container = document.getElementById('list');
         const data = currentFilter === '全部' ? bookmarks : bookmarks.filter(b => b.cat === currentFilter);
+        
         if (data.length === 0) {
-            container.innerHTML = '<div class="loading">目前雲端尚無資料，請先新增第一筆。</div>';
+            container.innerHTML = '<div class="loading">目前雲端尚無紀錄。</div>';
             return;
         }
+
         container.innerHTML = data.slice().reverse().map(b => `
             <div class="bookmark-card">
                 <div class="info">
                     <a href="${b.url}" target="_blank">${b.name}</a>
                     <p>${b.url}</p>
-                    <span class="tag">📁 ${b.cat}</span>
+                    <div style="font-size:10px; color:#64748b; margin-top:5px;">📁 分類：${b.cat}</div>
                 </div>
             </div>`).join('');
     }
-    function manageCategories() { const n = prompt("新增分類："); if(n) { categories.push(n); localStorage.setItem('vhi_cats', JSON.stringify(categories)); renderCategories(); } }
 
     init();
 </script>
