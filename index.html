@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VHI 雲端同步文件庫 v4.5</title>
+    <title>VHI 雲端同步文件庫 v5.2</title>
     <style>
         :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; --google: #ea4335; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         .panel { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
-        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; padding-bottom: 10px; }
+        h2 { text-align: center; margin-top: 0; color: var(--primary); font-size: 1.4rem; padding-bottom: 5px; }
+        .update-tag { text-align: center; font-size: 11px; color: #94a3b8; margin-bottom: 15px; }
         label { display: block; font-size: 13px; color: #64748b; margin-top: 10px; font-weight: bold; }
         input, select { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .btn-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
@@ -33,6 +34,8 @@
 
 <div class="container">
     <h2>🛠️ VHI 雲端文件庫 (自動同步版)</h2>
+    <div class="update-tag">版本：v5.2 (最新更新：2026/03/03 11:20)</div>
+    
     <div id="status" class="status-msg">✅ 資料已同步至 Google 試算表</div>
 
     <div class="panel">
@@ -54,13 +57,12 @@
     </div>
 
     <div id="filterBar" class="filter-bar"></div>
-    <div id="list"><div class="loading">正在從雲端讀取歷史紀錄...</div></div>
+    <div id="list"><div class="loading">正在從雲端讀取最新歷史紀錄...</div></div>
 </div>
 
 <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
 <script>
-    // --- 核心設定區 ---
     const SHEET_ID = '1kqNSUPCtz-rH4v1ZnbO1LTBmSltm6x1vy5lzy6u7UXo'; 
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSdtJIHbL78eG5CicdS55bOkCEQSDsoeKwC1AjHTrONfPpK9QQ/formResponse";
 
@@ -70,30 +72,31 @@
 
     async function init() {
         document.getElementById('bmForm').action = FORM_ACTION;
-        
         const params = new URLSearchParams(window.location.search);
         if (params.has('name')) document.getElementById('siteName').value = decodeURIComponent(params.get('name'));
         if (params.has('url')) document.getElementById('siteUrl').value = decodeURIComponent(params.get('url'));
-
         renderCategories();
         await fetchCloudData();
     }
 
     async function fetchCloudData() {
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+        // 強制加入時間戳記防止瀏覽器快取舊資料
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&t=${new Date().getTime()}`;
         try {
             const response = await fetch(url);
+            if (!response.ok) throw new Error('無法讀取試算表');
             const data = await response.text();
-            const rows = data.split('\n').slice(1);
+            
+            const rows = data.split('\n').slice(1); 
             bookmarks = rows.map(row => {
                 const cols = row.split('","').map(c => c.replace(/"/g, ''));
                 return { name: cols[1], url: cols[2], cat: cols[3] };
-            }).filter(b => b.name);
+            }).filter(b => b.name && b.url);
             
             renderFilterBar();
             renderBookmarks();
         } catch (e) {
-            document.getElementById('list').innerHTML = '<div class="loading">讀取失敗，請確認試算表已「發布到網路」。</div>';
+            document.getElementById('list').innerHTML = '<div class="loading">讀取失敗：請確保試算表已執行「發布到網路」。</div>';
         }
     }
 
@@ -104,22 +107,24 @@
             document.getElementById('siteName').value = '';
             document.getElementById('siteUrl').value = '';
             if(window.location.search) window.history.replaceState({}, '', window.location.pathname);
+            // 提交後等待 Google 試算表寫入，3秒後自動刷新清單
             setTimeout(fetchCloudData, 3000);
         }, 1500);
     }
 
     function renderCategories() { document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join(''); }
-    
     function renderFilterBar() {
         const uniqueCats = ['全部', ...new Set(bookmarks.map(b => b.cat))];
         document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `<div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`).join('');
     }
-
     function setFilter(cat) { currentFilter = cat; renderFilterBar(); renderBookmarks(); }
-
     function renderBookmarks() {
         const container = document.getElementById('list');
         const data = currentFilter === '全部' ? bookmarks : bookmarks.filter(b => b.cat === currentFilter);
+        if (data.length === 0) {
+            container.innerHTML = '<div class="loading">目前雲端尚無資料，請先新增第一筆。</div>';
+            return;
+        }
         container.innerHTML = data.slice().reverse().map(b => `
             <div class="bookmark-card">
                 <div class="info">
@@ -129,7 +134,6 @@
                 </div>
             </div>`).join('');
     }
-
     function manageCategories() { const n = prompt("新增分類："); if(n) { categories.push(n); localStorage.setItem('vhi_cats', JSON.stringify(categories)); renderCategories(); } }
 
     init();
