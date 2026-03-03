@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VHI 雲端同步文件庫 v4.0</title>
+    <title>VHI 雲端同步文件庫 v4.5</title>
     <style>
         :root { --primary: #0284c7; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --success: #059669; --google: #ea4335; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
@@ -50,7 +50,7 @@
             </div>
         </form>
         
-        <a id="historyLink" href="#" target="_blank" class="btn-history">📊 查看 Google 試算表原始紀錄</a>
+        <a id="historyLink" href="https://docs.google.com/spreadsheets/d/1kqNSUPCtz-rH4v1ZnbO1LTBmSltm6x1vy5lzy6u7UXo/edit" target="_blank" class="btn-history">📊 查看 Google 試算表原始紀錄 (跨帳號)</a>
     </div>
 
     <div id="filterBar" class="filter-bar"></div>
@@ -61,9 +61,8 @@
 
 <script>
     // --- 核心設定區 ---
-    const SHEET_ID = '1kqNSUPCtz-rH4v1ZnbO1LTBmSltm6x1vy5lzy6u7UXo'; // 您的試算表 ID
+    const SHEET_ID = '1kqNSUPCtz-rH4v1ZnbO1LTBmSltm6x1vy5lzy6u7UXo'; 
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSdtJIHbL78eG5CicdS55bOkCEQSDsoeKwC1AjHTrONfPpK9QQ/formResponse";
-    const SHEET_FULL_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
 
     let categories = JSON.parse(localStorage.getItem('vhi_cats')) || ['VHI-Storage', 'VHI-Network', 'VHI-Compute', 'VHI-CLI'];
     let bookmarks = [];
@@ -71,9 +70,7 @@
 
     async function init() {
         document.getElementById('bmForm').action = FORM_ACTION;
-        document.getElementById('historyLink').href = SHEET_FULL_URL;
         
-        // 解析參數
         const params = new URLSearchParams(window.location.search);
         if (params.has('name')) document.getElementById('siteName').value = decodeURIComponent(params.get('name'));
         if (params.has('url')) document.getElementById('siteUrl').value = decodeURIComponent(params.get('url'));
@@ -82,13 +79,12 @@
         await fetchCloudData();
     }
 
-    // 從 Google 試算表讀取資料
     async function fetchCloudData() {
         const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
         try {
             const response = await fetch(url);
             const data = await response.text();
-            const rows = data.split('\n').slice(1); // 移除標題
+            const rows = data.split('\n').slice(1);
             bookmarks = rows.map(row => {
                 const cols = row.split('","').map(c => c.replace(/"/g, ''));
                 return { name: cols[1], url: cols[2], cat: cols[3] };
@@ -108,7 +104,6 @@
             document.getElementById('siteName').value = '';
             document.getElementById('siteUrl').value = '';
             if(window.location.search) window.history.replaceState({}, '', window.location.pathname);
-            // 3秒後自動重新抓取雲端資料以顯示最新項目
             setTimeout(fetchCloudData, 3000);
         }, 1500);
     }
@@ -116,8 +111,8 @@
     function renderCategories() { document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join(''); }
     
     function renderFilterBar() {
-        const allCats = ['全部', ...new Set(bookmarks.map(b => b.cat))];
-        document.getElementById('filterBar').innerHTML = allCats.map(c => `<div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`).join('');
+        const uniqueCats = ['全部', ...new Set(bookmarks.map(b => b.cat))];
+        document.getElementById('filterBar').innerHTML = uniqueCats.map(c => `<div class="filter-btn ${currentFilter === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`).join('');
     }
 
     function setFilter(cat) { currentFilter = cat; renderFilterBar(); renderBookmarks(); }
